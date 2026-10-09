@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modern Almagest · Chapter 2 · Spherical Astronomy</title>
+<!-- KaTeX (equation typesetting) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+
+<style>
+/* ==========================================================
+   SHARED THEME - keep identical across all simulations
+   ========================================================== */
+:root {
+  --bg:        #f6f4ef;   /* page background            */
+  --card:      #ffffff;   /* card / panel background    */
+  --ink:       #2f3440;   /* main text                  */
+  --muted:     #7b8190;   /* secondary text, grid lines */
+  --line:      #e2ded4;   /* borders                    */
+  --earth:     #6f9bd1;   /* earth / equator            */
+  --planet:    #d77a7a;   /* planet / object of interest*/
+  --sun:       #e6b450;   /* sun / ecliptic             */
+  --deferent:  #8fbf9f;   /* deferent                   */
+  --epicycle:  #a58bd0;   /* epicycle                   */
+  --radius:    14px;
+}
+
+/* ---------- Layout ---------- */
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px 16px 60px;
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main   { max-width: 1180px; margin: 0 auto; }
+h1     { font-size: 1.6rem; margin: 0 0 4px; }
+h2     { font-size: 1.15rem; margin: 22px 0 8px; }
+.sub   { color: var(--muted); margin: 0 0 18px; }
+
+/* ---------- Tabs ---------- */
+nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+nav button {
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 8px 14px; border-radius: 999px; cursor: pointer; font: inherit;
+}
+nav button.active { background: var(--earth); border-color: var(--earth); color: #fff; }
+section      { display: none; }
+section.show { display: block; }
+
+/* ---------- Cards, grid, controls ---------- */
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(60, 60, 40, .05);
+}
+.grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+@media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+canvas { width: 100%; max-width: 100%; height: auto; display: block; touch-action: none; }
+
+.ctl { display: grid; grid-template-columns: 90px 1fr 70px; gap: 8px; align-items: center; margin: 6px 0; }
+.ctl label { color: var(--muted); font-size: .9rem; }
+.ctl output { text-align: right; font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--earth); }
+
+.presets button {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 8px;
+  padding: 4px 10px; margin: 2px 4px 2px 0; cursor: pointer; font: inherit; font-size: .85rem;
+}
+.eq    { display: block; margin: 6px 0; overflow-x: auto; }
+.note  { color: var(--muted); font-size: .9rem; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+table  { border-collapse: collapse; width: 100%; font-size: .85rem; font-variant-numeric: tabular-nums; }
+th, td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: right; }
+tr.hl td { background: #fbf3dc; }
+
+.box  { background: #fbf8ee; border-left: 4px solid var(--sun); padding: 8px 12px; border-radius: 8px; margin: 10px 0; font-size: .93rem; }
+.box.warn { background: #fbefee; border-left-color: var(--planet); }
+nav button { font-size: .88rem; }
+
+/* ---------- Layout v2: visual + controls on top, theory below ---------- */
+.top   { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 800px) { .top { grid-template-columns: 1fr; } }
+.side .eq     { font-size: .9em; }
+.theory .eq   { font-size: .95em; }
+/* equations never wrap; any overflow scrolls quietly instead of showing a bar */
+.eq, .katex-display { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.eq::-webkit-scrollbar { display: none; }
+.katex-display { margin: .35em 0; }
+.katex { white-space: nowrap; }
+</style>
+</head>
+
+<body>
+<main>
+  <h1>Chapter 2 · Spherical Astronomy</h1>
+  <p class="sub">Interactive companion to <em>A Modern Almagest</em> (R. Fitzpatrick). Drag the sphere to rotate it.</p>
+
+  <nav id="tabs">
+    <button data-tab="s0" class="active">1 · Sphere &amp; motions</button>
+    <button data-tab="c1">2 · Celestial</button>
+    <button data-tab="c2">3 · Ecliptic</button>
+    <button data-tab="c3">4 · Horizontal</button>
+    <button data-tab="t1">5 · Ecliptic ⇄ celestial</button>
+    <button data-tab="t2">6 · Celestial → horizontal</button>
+    <button data-tab="s2">7 · Meridian transits</button>
+    <button data-tab="s3">8 · Climes &amp; solstices</button>
+  </nav>
+
+  <!-- ===================== SECTION 0: SPHERE & MOTIONS ===================== -->
+  <section id="s0" class="show">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-s0" width="720" height="520"></canvas>
+        <p class="note"><span style="color:var(--earth)">■</span> celestial equator &nbsp;
+          <span style="color:var(--sun)">■</span> ecliptic &nbsp; ● stars &nbsp; <span style="color:var(--sun)">●</span> sun &nbsp; <span style="color:var(--planet)">■</span> ε = 23°26′</p>
+      </div><div class="side"><div class="ctl"><label>Hours</label><input type="range" id="h0" min="0" max="24" step="0.1" value="0" data-unit=" h"><output></output></div><div class="ctl"><label>Sun λ☉</label><input type="range" id="ls0" min="0" max="360" step="1" value="30"><output></output></div><div class="presets"><button id="play0">▶ Play diurnal motion</button></div><div id="s0out"></div></div></div>
+    <div class="card theory">
+        
+        <h2>The celestial sphere</h2>
+        <p>Stars are so far away that, seen from Earth, they all seem to sit on one huge sphere centred on us. We only use <em>directions</em>, so only angles on this sphere matter. Earth is a point compared to it, which is why two observers at different places see a star in the same angular position.</p>
+        <h2>Motion 1 · diurnal</h2>
+        <p>The <em>whole</em> sphere (stars, sun, planets) turns east→west once per sidereal day about the celestial axis PP′, the extension of Earth's rotation axis. Drag the <b>Hours</b> slider: relative positions never change.</p>
+        <h2>Motion 2 · intrinsic</h2>
+        <p>Superimposed on this, the sun, moon and planets slowly drift west→east against the stars. The sun traces one fixed great circle in a year, the <span style="color:var(--sun)"><b>ecliptic</b></span>, tilted by ε = 23°26′ to the <span style="color:var(--earth)"><b>celestial equator</b></span>. Move <b>Sun λ☉</b>.</p>
+        <h2>The vernal equinox V</h2>
+        <p>The two circles cross at two points. V is the one where the sun crosses the equator going <em>north</em> called the vernal equinox or spring equinox; the other is the autumnal equinox V′.</p>
+        <div class="box">V is not stationary with respect to the fixed stars. Search precession of equinoxes to learn more</div>
+      </div>
+  </section>
+
+  <!-- ===================== SECTION C1: CELESTIAL ===================== -->
+  <section id="c1">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-c1" width="720" height="520"></canvas>
+        <p class="note"><span style="color:var(--earth)">■</span> celestial equator (fundamental circle)</p>
+        <p class="note"><span style="color:var(--earth)">■</span> thick blue arc: α along the equator</p>
+        <p class="note"><span style="color:var(--planet)">■</span> thick red arc: δ up its meridian</p>
+      </div><div class="side"><div class="ctl"><label>α (R.A.)</label><input type="range" id="al1" min="0" max="360" value="60"><output></output></div><div class="ctl"><label>δ (decl.)</label><input type="range" id="de1" min="-90" max="90" value="25"><output></output></div><div id="o-c1"></div></div></div>
+    <div class="card theory">
+        
+        <h2>How the system is built</h2>
+        <p>We use three mutually perpendicular unit vectors to define celestial coordinates: <b>v</b> points to the vernal equinox, <b>p</b> to the north celestial pole, and <b>u</b> completes the set (on the equator, 90° east of V). Any direction can be written <b>r</b> = x<b>v</b> + y<b>u</b> + z<b>p</b>, and each number is the dot product with the axis: x = <b>r·v</b>, etc.</p>
+        <p><b>Equatorial plane:</b> the plane containing the celestial equator (Earth's equator extended).</br>
+          <b>Declination δ</b>: angle of R above or below the equatorial plane (±90° at the poles).</br>
+          <b>Right ascension α</b>: project R onto the equatorial plane, then measure the angle from V eastward, 0° - 360° (or 0 - 24 h, 15° = 1 h).</p>
+        <span class="eq" data-tex="\mathbf r=\cos\delta\cos\alpha\,\mathbf v+\cos\delta\sin\alpha\,\mathbf u+\sin\delta\,\mathbf p\quad(2.1)"></span>
+        <span class="eq" data-tex="\sin\delta=\mathbf r\cdot\mathbf p,\qquad \tan\alpha=\dfrac{\mathbf r\cdot\mathbf u}{\mathbf r\cdot\mathbf v}\quad(2.2,2.3)"></span>
+        
+      </div>
+  </section>
+
+  <!-- ===================== SECTION C2: ECLIPTIC ===================== -->
+  <section id="c2">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-c2" width="720" height="520"></canvas>
+        <p class="note"><span style="color:var(--sun)">■</span> ecliptic (fundamental circle) &nbsp; <span style="color:var(--earth)">■</span> celestial equator for comparison</p>
+      </div><div class="side"><div class="ctl"><label>λ (ecl. long.)</label><input type="range" id="la2" min="0" max="360" value="60"><output></output></div><div class="ctl"><label>β (ecl. lat.)</label><input type="range" id="be2" min="-90" max="90" value="15"><output></output></div><div id="o-c2"></div></div></div>
+    <div class="card theory">
+        
+        <h2>How the system is built</h2>
+        <p><b>Ecliptic</b> the ecliptic is the sun's apparent path across the celestial sphere</p>
+        <p><b>Ecliptic plane:</b> the plane containing the ecliptic. It is tilted ε = 23°26′ because Earth's axis is tilted. Its poles are Q (north) and Q′.</p>
+        <p><b>Origin:</b> V lies on both circles, so it is the zero of λ too.</p>
+		<p><b>Ecliptic longitude λ</b> runs along the ecliptic, west→east, in the sun's direction of travel.</p>
+		<p><b>Ecliptic latitude β</b> is the angle above/below the ecliptic plane.</p>
+		<p>The planets stay within a few degrees of β = 0, which is why this system suits the sun, moon and planets.</p>
+        <p>New axes: <b>v</b> points to the vernal equinox, <b>s</b> to the summer solstice, at λ = 90° and <b>q</b> to the ecliptic pole.</p>
+        <span class="eq" data-tex="\mathbf r=\cos\beta\cos\lambda\,\mathbf v+\cos\beta\sin\lambda\,\mathbf s+\sin\beta\,\mathbf q\quad(2.8)"></span>
+        <span class="eq" data-tex="\sin\beta=\mathbf r\cdot\mathbf q,\qquad \tan\lambda=\dfrac{\mathbf r\cdot\mathbf s}{\mathbf r\cdot\mathbf v}\quad(2.9,2.10)"></span>
+        
+      </div>
+  </section>
+
+  <!-- ===================== SECTION C3: HORIZONTAL ===================== -->
+  <section id="c3">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-c3" width="720" height="520"></canvas>
+        <p class="note"><span style="color:var(--deferent)">■</span> local horizon (fundamental circle) &nbsp; <span style="color:var(--earth)">■</span> celestial equator</p>
+      </div><div class="side"><div class="ctl"><label>A (azimuth)</label><input type="range" id="A3" min="0" max="360" value="120"><output></output></div><div class="ctl"><label>a (altitude)</label><input type="range" id="a3" min="-90" max="90" value="35"><output></output></div><div class="ctl"><label>L (latitude)</label><input type="range" id="L4" min="-90" max="90" value="45"><output></output></div><div class="ctl"><label>α₀ (time)</label><input type="range" id="a04" min="0" max="360" value="30"><output></output></div><div id="o-c3"></div></div></div>
+    <div class="card theory">
+        
+        <h2>How the system is built</h2>
+        <p>This one belongs to an <b>observer</b> on the surface of the earth at site X.</p>
+		<p><b>Horizon:</b> the plane tangent to the earth at X, with zenith Z overhead. and nadir Z' underfoot.</p>
+		<p><b>Local meridian:</b> the plane plane that passes through the north and south compass point and the zenith. The north celestial pole lies on the meridian plane.</p>
+		<p><b>Latitude L:</b> the angle between the north compass point and the north celestial pole. The horizon therefore tilted by 90° - L with respect to the equator.</p>
+		<p><b>Altitude a:</b> angle above the horizon.</p>
+		<p><b>Azimuth A:</b> angle from the north point, toward east (N 0°, E 90°, S 180°, W 270°).</p>
+        <p>Axes: <b>n</b> (north), <b>e</b> (east), <b>z</b> (zenith).</p>
+		<p>Because of diurnal motion, <b>α₀</b>, the right ascension currently on the meridian, grows 15° per hour. Drag it and the horizon turns under the stars: a and A of a fixed star change continuously.</p>
+        <span class="eq" data-tex="\mathbf r=\cos a\sin A\,\mathbf e+\cos a\cos A\,\mathbf n+\sin a\,\mathbf z\quad(2.27)"></span>
+        <span class="eq" data-tex="\sin a=\mathbf r\cdot\mathbf z,\qquad \tan A=\dfrac{\mathbf r\cdot\mathbf e}{\mathbf r\cdot\mathbf n}\quad(2.28,2.29)"></span>
+        
+      </div>
+  </section>
+
+  <!-- ===================== SECTION T1: ECLIPTIC <-> CELESTIAL ===================== -->
+  <section id="t1">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-t1" width="720" height="520"></canvas>
+        <p class="note">Same point R, two descriptions. Ecliptic is the main frame here.</p>
+      </div><div class="side"><div class="ctl"><label>λ</label><input type="range" id="la5" min="0" max="360" value="60"><output></output></div><div class="ctl"><label>β</label><input type="range" id="be5" min="-90" max="90" value="15"><output></output></div><div id="o-t1"></div></div></div>
+    <div class="card theory">
+        
+        <h2>Derivation</h2>
+        <p><b>Idea:</b> the two systems share <b>v</b>; the ecliptic axes are the equatorial ones <em>rotated by ε about v</em>, so only u,p ↔ s,q mix:</p>
+        <span class="eq" data-tex="\mathbf s=\cos\epsilon\,\mathbf u+\sin\epsilon\,\mathbf p,\qquad \mathbf q=-\sin\epsilon\,\mathbf u+\cos\epsilon\,\mathbf p\quad(2.4,2.5)"></span>
+        <p>Insert these in Eq. (2.8) and collect terms in v, u, p:</p>
+        <span class="eq" data-tex="\mathbf r=\cos\beta\cos\lambda\,\mathbf v+(\cos\beta\sin\lambda\cos\epsilon-\sin\beta\sin\epsilon)\,\mathbf u+(\cos\beta\sin\lambda\sin\epsilon+\sin\beta\cos\epsilon)\,\mathbf p"></span>
+        <p>Compare with Eq. (2.1): the same vector, so the coefficients match.</p>
+        <span class="eq" data-tex="\sin\delta=\cos\epsilon\sin\beta+\sin\epsilon\cos\beta\sin\lambda\quad(2.13)"></span>
+        <span class="eq" data-tex="\tan\alpha=\dfrac{\cos\epsilon\cos\beta\sin\lambda-\sin\epsilon\sin\beta}{\cos\beta\cos\lambda}\quad(2.14)"></span>
+        <p>The inverse uses u = cos ε s - sin ε q, p = sin ε s + cos ε q (2.6, 2.7):</p>
+        <span class="eq" data-tex="\sin\beta=\cos\epsilon\sin\delta-\sin\epsilon\cos\delta\sin\alpha,\quad \tan\lambda=\dfrac{\cos\epsilon\cos\delta\sin\alpha+\sin\epsilon\sin\delta}{\cos\delta\cos\alpha}\quad(2.11,2.12)"></span>
+        <h2>Live numbers</h2>
+        
+      </div>
+  </section>
+
+  <!-- ===================== SECTION T2: CELESTIAL -> HORIZONTAL ===================== -->
+  <section id="t2">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-t2" width="720" height="520"></canvas>
+        <p class="note">Celestial frame is main; green circle is the horizon of the observer.</p>
+      </div><div class="side"><div class="ctl"><label>α</label><input type="range" id="al6" min="0" max="360" value="60"><output></output></div><div class="ctl"><label>δ</label><input type="range" id="de6" min="-90" max="90" value="25"><output></output></div><div class="ctl"><label>L</label><input type="range" id="L6" min="-90" max="90" value="45"><output></output></div><div class="ctl"><label>α₀</label><input type="range" id="a06" min="0" max="360" value="0"><output></output></div><div id="o-t2"></div></div></div>
+    <div class="card theory">
+        
+        <h2>Derivation</h2>
+        <p>The point on the equator crossing the meridian has unit vector <b>m</b> = sin α₀ <b>u</b> + cos α₀ <b>v</b>. In the meridian plane, the north point and zenith are <b>m</b> and <b>p</b> rotated by L:</p>
+        <span class="eq" data-tex="\mathbf n=\cos L\,\mathbf p-\sin L\,\mathbf m,\qquad \mathbf z=\sin L\,\mathbf p+\cos L\,\mathbf m\quad(2.17,2.18)"></span>
+        <p>and east is perpendicular to the meridian. Written in v, u, p:</p>
+        <span class="eq" data-tex="\mathbf e=-\sin\alpha_0\,\mathbf v+\cos\alpha_0\,\mathbf u"></span>
+        <span class="eq" data-tex="\mathbf n=-\sin L\cos\alpha_0\,\mathbf v-\sin L\sin\alpha_0\,\mathbf u+\cos L\,\mathbf p"></span>
+        <span class="eq" data-tex="\mathbf z=\cos L\cos\alpha_0\,\mathbf v+\cos L\sin\alpha_0\,\mathbf u+\sin L\,\mathbf p\quad(2.21\text{-}2.23)"></span>
+        <p>Now dot the object's vector (2.1) with each. For z: cos δ cos α cos L cos α₀ + cos δ sin α cos L sin α₀ + sin δ sin L, and cos(α-α₀) = cos α cos α₀ + sin α sin α₀, so</p>
+        <span class="eq" data-tex="\sin a=\sin L\sin\delta+\cos L\cos\delta\cos(\alpha-\alpha_0)\quad(2.30)"></span>
+        <p>Likewise r·e = cos δ sin(α-α₀) and r·n = cos L sin δ - sin L cos δ cos(α-α₀), hence</p>
+        <span class="eq" data-tex="\tan A=\dfrac{\cos\delta\sin(\alpha-\alpha_0)}{\cos L\sin\delta-\sin L\cos\delta\cos(\alpha-\alpha_0)}\quad(2.31)"></span>
+        <h2>Live numbers</h2>
+        
+      </div>
+  </section>
+
+  <!-- ===================== SECTION 2 ===================== -->
+  <section id="s2">
+    <div class="card top"><div class="viz">
+        <canvas class="sph" id="cv-s2" width="720" height="520"></canvas>
+        <p class="note"><span style="color:var(--deferent)">■</span> horizon &nbsp; <span style="color:var(--earth)">■</span> celestial equator &nbsp; <span style="color:var(--planet)">■</span> daily path of the object (δ fixed) &nbsp; grey ring = meridian. Drag to rotate; the dashed part of the path is below the horizon.</p>
+      </div><div class="side"><div class="ctl"><label>L (latitude)</label><input type="range" id="L2" min="-90" max="90" step="1" value="45"><output></output></div><div class="ctl"><label>δ (declination)</label><input type="range" id="del2" min="-90" max="90" step="1" value="20"><output></output></div><div id="s2out"></div></div></div>
+    <div class="card theory">
+        
+        <h2>Derivation</h2>
+        <p class="note">Altitude of any object, with t = α₀ - α the hour angle:</p>
+        <span class="eq" data-tex="\sin a=\sin L\sin\delta+\cos L\cos\delta\cos t \quad (2.30)"></span>
+        <p class="note">Upper transit (t = 0): sin a₊ = cos(L - δ). Lower transit (t = 180°): sin a₋ = -cos(L + δ). Hence</p>
+        <span class="eq" data-tex="a_+=90^\circ-|L-\delta|\ (2.34),\qquad a_-=|L+\delta|-90^\circ\ (2.35)"></span>
+        <p class="note">Never sets if a₋ &gt; 0, i.e. |L+δ| &gt; 90°. Never rises if a₊ &lt; 0, i.e. |L-δ| &gt; 90°.</p>
+        
+      </div>
+  </section>
+
+  <!-- ===================== SECTION 3 ===================== -->
+  <section id="s3">
+    <div class="card top"><div class="viz">
+        <canvas id="daychart" width="640" height="460"></canvas>
+        <p class="note">Day length through the year (x: solar longitude λ, 0°-360°) for the chosen latitude.</p>
+      </div><div class="side"><div class="ctl"><label>L (latitude)</label><input type="range" id="L3" min="-66" max="66" step="1" value="45"><output></output></div><div class="ctl"><label>λ☉ (sun)</label><input type="range" id="lam3" min="0" max="360" step="1" value="90"><output></output></div><div class="presets">
+          <button data-lam="0">Vernal equinox</button><button data-lam="90">Summer solstice</button>
+          <button data-lam="180">Autumnal equinox</button><button data-lam="270">Winter solstice</button>
+        </div><div id="s3out"></div></div></div>
+    <div class="card theory">
+        
+        <h2>Derivation</h2>
+        <span class="eq" data-tex="\sin\delta=\sin\epsilon\sin\lambda \quad (2.15)"></span>
+        <p class="note">Sunrise/sunset: a = 0 in (2.30) gives cos t<sub>h</sub> = -tan L tan δ (2.59), so the day lasts 2t<sub>h</sub>/15° hours. At the solstice (δ = ε) this is the longest day:</p>
+        <span class="eq" data-tex="\text{longest day}=180^\circ+2\sin^{-1}(\tan L\tan\epsilon)\ \text{time-degrees}"></span>
+        <span class="eq" data-tex="a_{\text{noon}}=90^\circ-|L-\delta|"></span>
+        
+      </div>
+    <div class="card">
+      <h2>Terrestrial climes (cf. Table 2.4)</h2>
+      <table id="climes"></table>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ==========================================================
+   SHARED PALETTE - must mirror the :root variables above
+   ========================================================== */
+const COL = {
+  bg: '#f6f4ef', card: '#ffffff', ink: '#2f3440', muted: '#7b8190', line: '#e2ded4',
+  earth: '#6f9bd1', planet: '#d77a7a', sun: '#e6b450',
+  deferent: '#8fbf9f', epicycle: '#a58bd0'
+};
+
+/* ==========================================================
+   MATH HELPERS
+   ========================================================== */
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const EPS = 23 + 26 / 60;                       // obliquity of ecliptic (deg)
+const sin = x => Math.sin(x * D2R), cos = x => Math.cos(x * D2R), tan = x => Math.tan(x * D2R);
+const asin = x => Math.asin(Math.max(-1, Math.min(1, x))) * R2D;
+const acos = x => Math.acos(Math.max(-1, Math.min(1, x))) * R2D;
+const norm360 = x => ((x % 360) + 360) % 360;
+
+/** Degrees -> "D°M′" string. */
+function dms(x) {
+  const s = x < 0 ? '-' : '', a = Math.abs(x);
+  let d = Math.floor(a), m = Math.round((a - d) * 60);
+  if (m === 60) { d++; m = 0; }
+  return s + d + "°" + String(m).padStart(2, '0') + "'";
+}
+/** Hours -> "HhMMm" string. */
+function hm(h) {
+  let H = Math.floor(h), M = Math.round((h - H) * 60);
+  if (M === 60) { H++; M = 0; }
+  return H + h + String(M).padStart(2, '0') + m;
+}
+
+/** Render every [data-tex] element, and allow dynamic re-rendering. */
+function tex(el, src) { katex.render(src, el, { throwOnError: false, displayMode: true }); }
+function renderStaticMath() { document.querySelectorAll('[data-tex]').forEach(e => tex(e, e.dataset.tex)); }
+
+/** Put a list of TeX lines (live numbers) into a container. */
+function showLines(container, lines) {
+  container.innerHTML = '';
+  lines.forEach(l => { const d = document.createElement('span'); d.className = 'eq'; container.appendChild(d); tex(d, l); });
+}
+
+/* ==========================================================
+   3D SPHERE RENDERER (hand-written orthographic projection)
+   All points live in the fixed celestial basis (v, u, p).
+   ========================================================== */
+const view = { yaw: 25, pitch: 20 };            // camera angles (deg), changed by dragging
+const g  = id => document.getElementById(id).value;   // read a slider
+const el = id => document.getElementById(id);
+
+/** Project 3D point (x=v, y=u, z=p) to screen; also returns depth (>0 = far side). */
+function project(p, cx, cy, R) {
+  // rotate about p-axis (yaw), then about x-axis (pitch)
+  const x1 = p[0] * cos(view.yaw) - p[1] * sin(view.yaw);
+  const y1 = p[0] * sin(view.yaw) + p[1] * cos(view.yaw);
+  const y2 = y1 * cos(view.pitch) - p[2] * sin(view.pitch);
+  const z2 = y1 * sin(view.pitch) + p[2] * cos(view.pitch);
+  return { x: cx + R * x1, y: cy - R * z2, d: y2 };
+}
+/** Draw a polyline of 3D points; far-side segments are faded. */
+function strokePath(ctx, pts, color, width, cx, cy, R) {
+  ctx.lineWidth = width; ctx.strokeStyle = color;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = project(pts[i], cx, cy, R), b = project(pts[i + 1], cx, cy, R);
+    ctx.globalAlpha = (a.d + b.d) / 2 > 0 ? 0.25 : 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+function label(ctx, text, p, color, cx, cy, R, dx = 6, dy = -6) {
+  const q = project(p, cx, cy, R);
+  ctx.fillStyle = color; ctx.font = '600 20px system-ui'; ctx.fillText(text, q.x + dx, q.y + dy);
+}
+function dot(ctx, p, color, r, cx, cy, R) {
+  const q = project(p, cx, cy, R);
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, 7); ctx.fill();
+}
+
+/* ---------- Coordinate frames ----------
+   A frame is three orthonormal axes o = [e1, e2, e3] written in (v,u,p).
+   e3 is the pole, e1 the zero of longitude. A direction with
+   (lon, lat) in a frame is  cos(lat)cos(lon) e1 + cos(lat)sin(lon) e2 + sin(lat) e3. */
+const cE = cos(EPS), sE = sin(EPS);
+const FR = {
+  cel: { o: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],        n: ['v', 'u', 'p'], col: COL.earth, org: 'V' },
+  ecl: { o: [[1, 0, 0], [0, cE, sE], [0, -sE, cE]],   n: ['v', 's', 'q'], col: COL.sun,   org: 'V' }   // Eqs 2.4, 2.5
+};
+
+/** Horizontal frame for latitude L and meridian right ascension a0 (Eqs 2.21-2.23). */
+function horFrame(L, a0) {
+  return { o: [[-sin(L) * cos(a0), -sin(L) * sin(a0), cos(L)],     // n
+               [-sin(a0), cos(a0), 0],                              // e
+               [cos(L) * cos(a0), cos(L) * sin(a0), sin(L)]],       // z
+           n: ['n', 'e', 'z'], col: COL.deferent, org: 'N' };
+}
+const comb = (f, x, y, z) => [0, 1, 2].map(i => x * f.o[0][i] + y * f.o[1][i] + z * f.o[2][i]);
+const vec  = (f, lon, lat) => comb(f, cos(lat) * cos(lon), cos(lat) * sin(lon), sin(lat));
+const dotp = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/* Per-frame decoration: names of the two angles, cardinal labels [lon, lat, text]
+   and direction arrows [lon from, lon to, text] drawn along the fundamental circle. */
+const FRAME_INFO = {
+  vu: { ang: ['α', 'δ'],
+        cards: [[0, 0, '0h'], [90, 0, '6h'], [180, 0, '12h'], [270, 0, '18h'], [0, 90, 'North (P)'], [0, 270, 'South (P′)']], arrows: [] },
+  vs: { ang: ['λ', 'β'],
+        cards: [[0, 0, '0°'], [90, 0, '90° summer solstice'], [180, 0, '180°'], [270, 0, '270° winter solstice'], [0, 90, 'Q'], [0, 270, 'Q′']], arrows: [] },
+  ne: { ang: ['A', 'a'],
+        cards: [[90, 0, 'E'], [180, 0, 'S'], [270, 0, 'W'], [0, 90, 'Zenith'], [0, 270, 'Nadir']], arrows: [] }
+};
+
+/** Arrow between two 3D points (shaft + filled head); faded when on the far side. */
+function arrow3(c, a, b, col, w, cx, cy, R) {
+  const p = project(a, cx, cy, R), q = project(b, cx, cy, R), t = Math.atan2(q.y - p.y, q.x - p.x), h = 11;
+  c.globalAlpha = (p.d + q.d) / 2 > 0.05 ? 0.35 : 1;
+  c.strokeStyle = c.fillStyle = col; c.lineWidth = w;
+  c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(q.x - 0.6 * h * Math.cos(t), q.y - 0.6 * h * Math.sin(t)); c.stroke();
+  c.beginPath(); c.moveTo(q.x, q.y);
+  c.lineTo(q.x - h * Math.cos(t - 0.4), q.y - h * Math.sin(t - 0.4));
+  c.lineTo(q.x - h * Math.cos(t + 0.4), q.y - h * Math.sin(t + 0.4)); c.closePath(); c.fill();
+  c.globalAlpha = 1;
+}
+
+/** Draw the main frame: shaded fundamental plane, axes with arrowheads, cardinal labels,
+    angle arcs with names, object R and its projection R' on the plane. Returns R. */
+function drawSphere(id, main, ctxs, lon, lat) {
+	const cv = el(id), c = cv.getContext('2d'), cx = cv.width / 2, cy = cv.height / 2, R = 185;
+	const info = FRAME_INFO[main.n[0] + main.n[1]], sc = (v, k) => v.map(x => x * k);
+	c.clearRect(0, 0, cv.width, cv.height);
+	c.strokeStyle = COL.line; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke();
+	const ring = f => { const p = []; for (let t = 0; t <= 360; t += 3) p.push(vec(f, t, 0)); return p; };
+
+	// shade the fundamental plane
+	c.globalAlpha = 0.1; c.fillStyle = main.col; c.beginPath();
+	ring(main).forEach((p, i) => {
+		const q = project(p, cx, cy, R);
+		i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y);
+	});
+	c.fill(); c.globalAlpha = 1;
+	ctxs.forEach(f => strokePath(c, ring(f), f.col, 1.5, cx, cy, R));      // faint context circles
+	strokePath(c, ring(main), main.col, 3, cx, cy, R);
+	strokePath(c, [comb(main, 0, 0, -1.15), comb(main, 0, 0, 1.15)], COL.muted, 1, cx, cy, R);
+
+	// cardinal labels and direction arrows
+	info.cards.forEach(([lo, la, t]) => {
+		const p = vec(main, lo, la);
+		dot(c, p, COL.muted, 3, cx, cy, R);
+		label(c, t, p, COL.muted, cx, cy, R, 5, 15);
+	});
+	info.arrows.forEach(([l1, l2, t]) => {
+		arrow3(c, vec(main, l1, 0), vec(main, l2, 0), COL.ink, 2, cx, cy, R);
+		label(c, t, vec(main, l2, 0), COL.ink, cx, cy, R, 6, 18);
+	});
+
+	// unit vectors with arrowheads
+	main.n.forEach((nm, k) => {
+		const tip = sc(main.o[k], 0.5);
+		arrow3(c, [0, 0, 0], tip, COL.ink, 1.8, cx, cy, R);
+		label(c, nm, tip, COL.ink, cx, cy, R, 6, -4);
+	});
+	dot(c, main.o[0], COL.ink, 4, cx, cy, R);
+	label(c, main.org, main.o[0], COL.ink, cx, cy, R, -16, 14);
+
+	// R and its orthogonal projection R' on the fundamental plane:
+	// R' = R - (R.e3) e3, which has length cos(lat) and lies in the plane (e1,e2).
+	const cl = cos(lat), r = vec(main, lon, lat), rp = comb(main, cl * cos(lon), cl * sin(lon), 0);
+	// angles
+	//  - longitude: small arc in the fundamental plane, from e1 to R'
+	//  - latitude : small arc in the vertical plane through R, from R' up (or down) to R
+	const d = comb(main, cos(lon), sin(lon), 0);                 // unit direction of R'
+	const e3 = main.o[2], inPlane = a => comb(main, cos(a), sin(a), 0);
+	const upArc = (a, k) => [0, 1, 2].map(i => k * (cos(a) * d[i] + sin(a) * e3[i]));
+	const la = [], lb = [];
+	for (let t = 0; t <= lon; t += 2) la.push(inPlane(t).map(x => 0.30 * x));
+	for (let k = 0; k <= 40; k++) lb.push(upArc(lat * k / 40, 0.20));
+	strokePath(c, la, main.col, 3, cx, cy, R);
+	strokePath(c, lb, COL.planet, 3, cx, cy, R);
+	label(c, info.ang[0], inPlane(lon / 2).map(x => 0.5 * x), main.col, cx, cy, R, -4, 4);
+	label(c, info.ang[1], upArc(lat / 2, 0.75), COL.planet, cx, cy, R, 2, 4);
+
+	// dashed drop line R -> R' (parallel to the pole axis, hence perpendicular to the plane)
+	c.setLineDash([5, 4]);
+	strokePath(c, [r, rp], COL.planet, 1.8, cx, cy, R);
+	c.setLineDash([]);
+	arrow3(c, [0, 0, 0], rp, COL.epicycle, 2.4, cx, cy, R);
+	label(c, "R′", rp, COL.epicycle, cx, cy, R, 6, 14);
+	arrow3(c, [0, 0, 0], r, COL.planet, 2.4, cx, cy, R);
+	dot(c, r, COL.planet, 6, cx, cy, R); label(c, 'R', r, COL.planet, cx, cy, R, 9, -9);
+	return r;
+}
+
+/** TeX for r = x e1 + y e2 + z e3 with numbers filled in. */
+const sg = x => (x < 0 ? '-' : '+') + Math.abs(x).toFixed(3);
+function vecTex(n, lon, lat) {
+  return `\\mathbf r=${(cos(lat) * cos(lon)).toFixed(3)}\\,\\mathbf ${n[0]}${sg(cos(lat) * sin(lon))}\\,\\mathbf ${n[1]}${sg(sin(lat))}\\,\\mathbf ${n[2]}`;
+}
+
+// drag to rotate any sphere canvas
+document.querySelectorAll('canvas.sph').forEach(cv => {
+  let drag = false, last = null;
+  cv.addEventListener('pointerdown', e => { drag = true; last = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointerup', () => drag = false);
+  cv.addEventListener('pointermove', e => {
+    if (!drag) return;
+    view.yaw += (e.clientX - last[0]) * 0.5;
+    view.pitch = Math.max(-89, Math.min(89, view.pitch + (e.clientY - last[1]) * 0.5));
+    last = [e.clientX, e.clientY]; renderers[current]();
+  });
+});
+
+/* ==========================================================
+   TAB 1 - SPHERE AND THE TWO MOTIONS
+   ========================================================== */
+// Fixed pseudo-random "stars" (simple LCG so the sky is the same every load)
+const STARS = (() => {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  return Array.from({ length: 45 }, () => { const z = 2 * rnd() - 1, t = 360 * rnd(), r = Math.sqrt(1 - z * z); return [r * cos(t), r * sin(t), z]; });
+})();
+
+function renderS0() {
+  const h = +g('h0'), ls = +g('ls0'), th = -15 * h;        // east->west: angle decreases
+  const cv = el('cv-s0'), c = cv.getContext('2d'), cx = cv.width / 2, cy = cv.height / 2, R = 185;
+  // diurnal motion = rotation of EVERYTHING about the celestial axis p
+  const rot = p => [p[0] * cos(th) - p[1] * sin(th), p[0] * sin(th) + p[1] * cos(th), p[2]];
+  c.clearRect(0, 0, cv.width, cv.height);
+  c.strokeStyle = COL.line; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke();
+  const ring = f => { const p = []; for (let t = 0; t <= 360; t += 3) p.push(rot(vec(f, t, 0))); return p; };
+  strokePath(c, ring(FR.cel), COL.earth, 2.5, cx, cy, R);
+  strokePath(c, ring(FR.ecl), COL.sun, 2.5, cx, cy, R);
+  strokePath(c, [[0, 0, -1.15], [0, 0, 1.15]], COL.muted, 1, cx, cy, R);
+  label(c, 'P', [0, 0, 1.15], COL.ink, cx, cy, R);
+  label(c, "P'", [0, 0, -1.15], COL.ink, cx, cy, R);
+  STARS.forEach(s => dot(c, rot(s), COL.muted, 2, cx, cy, R));
+  // ε: angle between the equator and ecliptic (seen at the summer solstice) = angle between the poles P and Q
+  const arcA = [], arcB = [], pol = k => p => p.map(x => x * k);
+  for (let t = 0; t <= EPS; t += 1) { arcA.push(rot([0, cos(t), sin(t)])); arcB.push(rot([0, -sin(t), cos(t)])); }
+  strokePath(c, arcA, COL.planet, 2, cx, cy, R);
+  strokePath(c, arcB, COL.planet, 2, cx, cy, R);
+  label(c, 'ε', pol(1.12)(rot([0, cos(EPS / 2), sin(EPS / 2)])), COL.planet, cx, cy, R, 0, 5);
+  label(c, 'ε', pol(1.12)(rot([0, -sin(EPS / 2), cos(EPS / 2)])), COL.planet, cx, cy, R, -14, 0);
+  strokePath(c, [[0, 0, 0], rot([0, -1.15 * sin(EPS), 1.15 * cos(EPS)])], COL.sun, 1.5, cx, cy, R);
+  label(c, 'Q', rot([0, -1.15 * sin(EPS), 1.15 * cos(EPS)]), COL.sun, cx, cy, R, 6, -4);
+  dot(c, rot([1, 0, 0]), COL.ink, 4, cx, cy, R); label(c, 'V', rot([1, 0, 0]), COL.ink, cx, cy, R, 6, 14);
+  const sun = rot(vec(FR.ecl, ls, 0));                       // intrinsic motion = change of λ☉
+  dot(c, sun, COL.sun, 9, cx, cy, R); label(c, '☉', sun, COL.sun, cx, cy, R, 10, -8);
+  const dl = asin(sin(EPS) * sin(ls));
+  
+}
+// play / pause the diurnal rotation
+let playing = false;
+el('play0').addEventListener('click', e => {
+  playing = !playing;
+  e.target.textContent = playing ? '⏸ Pause' : '▶ Play diurnal motion';
+
+  const step = () => {
+    if (!playing || current !== 's0') {
+      playing = false;
+      e.target.textContent = '▶ Play diurnal motion';
+      return;
+    }
+
+    const s = el('h0');
+
+    s.value = (+s.value + 0.1) % 24;
+    s.dispatchEvent(new Event('input'));
+
+    setTimeout(step, 40); // 25 updates per second
+  };
+
+  step();
+});
+
+/* ==========================================================
+   TABS 2-4 - THE THREE COORDINATE SYSTEMS
+   ========================================================== */
+function renderC1() {
+  const al = +g('al1'), de = +g('de1');
+  drawSphere('cv-c1', FR.cel, [], al, de);
+  showLines(el('o-c1'), [`\\alpha=${dms(al)},\\ \\delta=${dms(de)}`, vecTex(FR.cel.n, al, de),
+    `\\mathbf r\\cdot\\mathbf p=${sin(de).toFixed(3)}=\\sin\\delta`]);
+}
+function renderC2() {
+  const la = +g('la2'), be = +g('be2');
+  drawSphere('cv-c2', FR.ecl, [FR.cel], la, be);
+  showLines(el('o-c2'), [`\\lambda=${dms(la)},\\ \\beta=${dms(be)}`, vecTex(FR.ecl.n, la, be)]);
+}
+function renderC3() {
+  const A = +g('A3'), a = +g('a3'), L = +g('L4'), a0 = +g('a04');
+  drawSphere('cv-c3', horFrame(L, a0), [FR.cel], A, a);
+  showLines(el('o-c3'), [`A=${dms(A)},\\ a=${dms(a)}`, `\\mathbf r=${(cos(a) * sin(A)).toFixed(3)}\\,\\mathbf e${sg(cos(a) * cos(A))}\\,\\mathbf n${sg(sin(a))}\\,\\mathbf z`,
+    a < 0 ? '\\text{(below the horizon: not visible)}' : '\\text{(above the horizon)}']);
+}
+
+/* ==========================================================
+   TABS 5-6 - TRANSFORMATIONS (numbers follow the derivations)
+   ========================================================== */
+function renderT1() {
+  const la = +g('la5'), be = +g('be5');
+  drawSphere('cv-t1', FR.ecl, [FR.cel], la, be);
+  const x = cos(be) * cos(la);                              // r·v
+  const y = cos(be) * sin(la) * cE - sin(be) * sE;           // r·u
+  const z = cos(be) * sin(la) * sE + sin(be) * cE;           // r·p
+  const de = asin(z), al = norm360(Math.atan2(y, x) * R2D), cd = cos(de);
+  const be2 = asin(cE * z - sE * cd * sin(al));              // inverse (2.11)
+  const la2 = norm360(Math.atan2(cE * cd * sin(al) + sE * z, cd * cos(al)) * R2D);
+  showLines(el('o-t1'), [
+    `\\mathbf r\\cdot\\mathbf v=${x.toFixed(3)},\\ \\mathbf r\\cdot\\mathbf u=${y.toFixed(3)},\\ \\mathbf r\\cdot\\mathbf p=${z.toFixed(3)}`,
+    `\\delta=${dms(de)},\\quad \\alpha=${dms(al)}`,
+    `\\text{check: }\\beta=${dms(be2)},\\ \\lambda=${dms(la2)}`]);
+}
+function renderT2() {
+  const al = +g('al6'), de = +g('de6'), L = +g('L6'), a0 = +g('a06');
+  const hf = horFrame(L, a0);
+  const r = drawSphere('cv-t2', FR.cel, [hf], al, de);
+  const rn = dotp(r, hf.o[0]), re = dotp(r, hf.o[1]), rz = dotp(r, hf.o[2]);    // r·n, r·e, r·z
+  const a = asin(rz), A = norm360(Math.atan2(re, rn) * R2D);
+  showLines(el('o-t2'), [
+    `\\mathbf r\\cdot\\mathbf z=${rz.toFixed(3)},\\ \\mathbf r\\cdot\\mathbf e=${re.toFixed(3)},\\ \\mathbf r\\cdot\\mathbf n=${rn.toFixed(3)}`,
+    `a=${dms(a)},\\quad A=${dms(A)}`,
+    `\\alpha-\\alpha_0=${dms(al - a0)}`,
+    a < 0 ? '\\text{below the horizon}' : '\\text{above the horizon}']);
+}
+
+/* ==========================================================
+   SECTION 2 - MERIDIAN TRANSITS
+   ========================================================== */
+function renderS2() {
+  const L = +g('L2'), dl = +g('del2');
+  const cv = el('cv-s2'), c = cv.getContext('2d'), cx = cv.width / 2, cy = cv.height / 2, R = 185;
+  // Local scene (right-handed): x = north point, y = west point, z = zenith (screen "up").
+  const Pn = [cos(L), 0, sin(L)];            // celestial pole: raised by L above the north point
+  const M  = [-sin(L), 0, cos(L)];           // equator point on the meridian (Eqs 2.17, 2.18)
+  const Y  = [0, 1, 0];
+  const mix = (a, b, x, y) => [0, 1, 2].map(i => x * a[i] + y * b[i]);
+  const pts = f => { const p = []; for (let t = 0; t <= 360; t += 3) p.push(f(t)); return p; };
+  const diurnal = t => [0, 1, 2].map(i => cos(dl) * (cos(t) * M[i] + sin(t) * Y[i]) + sin(dl) * Pn[i]);
+
+  c.clearRect(0, 0, cv.width, cv.height);
+  c.strokeStyle = COL.line; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.stroke();
+  // horizon (shaded plane), meridian, celestial equator, celestial axis
+  c.globalAlpha = 0.1; c.fillStyle = COL.deferent; c.beginPath();
+  pts(t => [cos(t), sin(t), 0]).forEach((p, i) => { const q = project(p, cx, cy, R); i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y); });
+  c.fill(); c.globalAlpha = 1;
+  strokePath(c, pts(t => [cos(t), sin(t), 0]), COL.deferent, 3, cx, cy, R);
+  strokePath(c, pts(t => [cos(t), 0, sin(t)]), COL.muted, 1.5, cx, cy, R);
+  strokePath(c, pts(t => mix(M, Y, cos(t), sin(t))), COL.earth, 2.5, cx, cy, R);
+  strokePath(c, [Pn.map(x => -1.15 * x), Pn.map(x => 1.15 * x)], COL.muted, 1, cx, cy, R);
+
+  // daily path of the object: solid above the horizon, dashed below it
+  const path = pts(diurnal);
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = project(path[i], cx, cy, R), b = project(path[i + 1], cx, cy, R), up = path[i][2] + path[i + 1][2] >= 0;
+    c.strokeStyle = COL.planet; c.lineWidth = up ? 4 : 2; c.setLineDash(up ? [] : [4, 4]);
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+  }
+  c.setLineDash([]);
+
+  // compass points on the horizon, zenith and pole arrows (unit vectors)
+  [['N', [1, 0, 0]], ['W', [0, 1, 0]], ['S', [-1, 0, 0]], ['E', [0, -1, 0]]].forEach(([t, p]) => { dot(c, p, COL.deferent, 4, cx, cy, R); label(c, t, p, COL.ink, cx, cy, R, 6, 16); });
+  arrow3(c, [0, 0, 0], [0, 0, 1.25], COL.ink, 1.8, cx, cy, R); label(c, 'Z', [0, 0, 1.25], COL.ink, cx, cy, R, 6, -4);
+  arrow3(c, [0, 0, 0], Pn.map(x => 1.25 * x), COL.earth, 1.8, cx, cy, R); label(c, 'P', Pn.map(x => 1.25 * x), COL.earth, cx, cy, R, 6, -4);
+
+  // the two meridian crossings (transits) as vectors from the centre
+  const up = mix(M, Pn, cos(dl), sin(dl)), lo = mix(M, Pn, -cos(dl), sin(dl));
+  [[up, 'upper transit'], [lo, 'lower transit']].forEach(([p, t]) => {
+    arrow3(c, [0, 0, 0], p, COL.planet, 2, cx, cy, R); dot(c, p, COL.planet, 6, cx, cy, R); label(c, t, p, COL.planet, cx, cy, R, 9, -8);
+  });
+
+  // angles near the centre, like in a triangle, all in the meridian (x-z) plane
+  const arc = (u, v, ang, k) => { const p = []; for (let i = 0; i <= 40; i++) p.push(mix(u, v, k * cos(ang * i / 40), k * sin(ang * i / 40))); return p; };
+  const tag = (t, u, v, ang, k, col) => label(c, t, mix(u, v, k * cos(ang / 2), k * sin(ang / 2)), col, cx, cy, R, 2, 4);
+  const N = [1, 0, 0], Zn = [0, 0, 1];
+  strokePath(c, arc(N, Zn, L, 0.8), COL.earth, 3, cx, cy, R);  tag('L', N, Zn, L, 0.95, COL.earth);     // pole elevation = latitude
+  strokePath(c, arc(M, Pn, dl, 0.6), COL.planet, 3, cx, cy, R); tag('δ', M, Pn, dl, 0.74, COL.planet);  // declination
+  [[up, 0.45, 'a+'], [lo, 0.3, 'a−']].forEach(([p, k, t]) => {                                          // altitudes at the transits
+    const alt = asin(p[2]), hx = p[0] >= 0 ? [1, 0, 0] : [-1, 0, 0];
+    strokePath(c, arc(hx, Zn, alt, k), COL.deferent, 3, cx, cy, R); tag(t, hx, Zn, alt, k + 0.14, COL.deferent);
+  });
+
+  const aUp = 90 - Math.abs(L - dl), aLo = Math.abs(L + dl) - 90;      // Eqs 2.34, 2.35
+  const state = Math.abs(L + dl) > 90 ? 'circumpolar – never sets'
+              : Math.abs(L - dl) > 90 ? 'never rises' : 'rises and sets';
+  showLines(el('s2out'), [
+    `a_+=90^\\circ-|${L}^\\circ-${dl}^\\circ|=${aUp}^\\circ`,
+    `a_-=|${L}^\\circ+${dl}^\\circ|-90^\\circ=${aLo}^\\circ`
+  ]);
+  const b = document.createElement('p'); b.innerHTML = `Verdict: <span class="badge">${state}</span>`;
+  el('s2out').appendChild(b);
+}
+
+/* ==========================================================
+   SECTION 3 - CLIMES, EQUINOXES, SOLSTICES
+   ========================================================== */
+/** Day length in hours for latitude L and solar longitude lam (Eq. 2.59). */
+function dayLength(L, lam) {
+  const dl = asin(sin(EPS) * sin(lam));            // Eq. 2.15
+  const c = -tan(L) * tan(dl);
+  if (c >= 1) return 0;                            // sun never rises
+  if (c <= -1) return 24;                          // sun never sets
+  return 2 * acos(c) / 15;                         // 2 t_h / 15 deg per hour
+}
+
+function renderS3() {
+  const L = +document.getElementById('L3').value, lam = +document.getElementById('lam3').value;
+  const dl = asin(sin(EPS) * sin(lam)), len = dayLength(L, lam), aNoon = 90 - Math.abs(L - dl);
+  const longest = 180 + 2 * asin(tan(Math.abs(L)) * tan(EPS));
+
+  // --- chart ---
+  const c = document.getElementById('daychart').getContext('2d'), W = 640, H = 460;
+  const mx = 50, my = 20, pw = W - mx - 20, ph = H - my - 50;
+  c.clearRect(0, 0, W, H);
+  c.font = '12px system-ui'; c.fillStyle = COL.muted; c.strokeStyle = COL.line; c.lineWidth = 1;
+  for (let h = 0; h <= 24; h += 4) {                              // horizontal grid
+    const y = my + ph * (1 - h / 24);
+    c.beginPath(); c.moveTo(mx, y); c.lineTo(mx + pw, y); c.stroke(); c.fillText(h + 'h', 14, y + 4);
+  }
+  for (let t = 0; t <= 360; t += 90) {                             // vertical grid + season marks
+    const x = mx + pw * t / 360;
+    c.beginPath(); c.moveTo(x, my); c.lineTo(x, my + ph); c.stroke(); c.fillText(t + '°', x - 10, my + ph + 18);
+  }
+  c.strokeStyle = COL.deferent; c.lineWidth = 3; c.beginPath();
+  for (let t = 0; t <= 360; t += 2) {
+    const x = mx + pw * t / 360, y = my + ph * (1 - dayLength(L, t) / 24);
+    t ? c.lineTo(x, y) : c.moveTo(x, y);
+  }
+  c.stroke();
+  const px = mx + pw * lam / 360, py = my + ph * (1 - len / 24);   // current-day marker
+  c.fillStyle = COL.sun; c.beginPath(); c.arc(px, py, 8, 0, 7); c.fill();
+  c.fillStyle = COL.muted; c.fillText('solar longitude λ☉', mx + pw / 2 - 50, H - 8);
+
+  // --- derivation lines ---
+  showLines(document.getElementById('s3out'), [
+    `\\sin\\delta=\\sin\\epsilon\\sin(${lam}^\\circ)\\Rightarrow\\delta=${dms(dl)}`,
+    `\\cos t_h=-\\tan(${L}^\\circ)\\tan(${dl.toFixed(2)}^\\circ)=${(-tan(L) * tan(dl)).toFixed(3)}`,
+    `\\text{day}=2t_h/15^\\circ=\\mathbf{${hm(len)}}`,
+    `a_{\\text{noon}}=90^\\circ-|${L}^\\circ-${dl.toFixed(2)}^\\circ|=${dms(aNoon)}`,
+    `\\text{longest day (this |L|)}=${hm(longest / 15)}`
+  ]);
+
+  // --- climes table (rows for L = 0..65 every 5 deg) ---
+  const tb = document.getElementById('climes');
+  let html = '<tr><th>L</th><th>Longest day</th><th>Summer-solstice noon</th><th>Equinox noon</th><th>Winter-solstice noon</th></tr>';
+  const alt = (l, d) => { const a = 90 - Math.abs(l - d); return dms(a) + (l > d ? ' S' : ' N'); };
+  for (let l = 0; l <= 65; l += 5) {
+    const near = Math.abs(Math.abs(L) - l) < 2.5;
+    html += `<tr class="${near ? 'hl' : ''}"><td>${l}°</td><td>${hm(dayLength(l, 90))}</td>` +
+            `<td>${alt(l, EPS)}</td><td>${alt(l, 0)}</td><td>${alt(l, -EPS)}</td></tr>`;
+  }
+  tb.innerHTML = html;
+}
+
+/* ==========================================================
+   UI WIRING (tabs, sliders, presets)
+   ========================================================== */
+const renderers = { s0: renderS0, c1: renderC1, c2: renderC2, c3: renderC3, t1: renderT1, t2: renderT2, s2: renderS2, s3: renderS3 };
+let current = 's0';
+
+document.querySelectorAll('#tabs button').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('section').forEach(s => s.classList.toggle('show', s.id === btn.dataset.tab));
+  current = btn.dataset.tab; renderers[current]();
+}));
+
+// Every slider updates its <output> (in degrees) and redraws the active section.
+document.querySelectorAll('input[type=range]').forEach(inp => {
+  const out = inp.parentElement.querySelector('output');
+  const sync = () => out.textContent = inp.value + (inp.dataset.unit || '°');
+  inp.addEventListener('input', () => { sync(); renderers[current](); });
+  sync();
+});
+document.querySelectorAll('.presets button').forEach(b => b.addEventListener('click', () => {
+  const s = document.getElementById('lam3'); s.value = b.dataset.lam; s.dispatchEvent(new Event('input'));
+}));
+
+// KaTeX is loaded with `defer`, so wait for the page to finish loading.
+window.addEventListener('load', () => { renderStaticMath(); renderers[current](); });
+</script>
+</body>
+</html>
